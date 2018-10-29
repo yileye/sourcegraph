@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"context"
 	"fmt"
+	"github.com/sourcegraph/sourcegraph/cmd/repo-updater/internal/pkg/scheduler"
 	"math/rand"
 	"sort"
 	"strings"
@@ -665,6 +666,13 @@ func (r *repoList) updateLoop(ctx context.Context) {
 			log15.Debug("woken by ping", "s", s)
 		case <-ctx.Done():
 			log15.Info("context complete, terminating update loop.")
+			// Drop any existing lists; they'll get recreated by periodic updates later
+			// if the scheduler gets reenabled.
+			r.mu.Lock()
+			r.repos = make(map[string]*repoData)
+			r.heap = make([]*repoData, 0)
+			r.bumped = make([]*repoData, 0)
+			r.mu.Unlock()
 			return
 		}
 	}
@@ -720,16 +728,52 @@ func (r *repoList) updateSource(source string, newList sourceRepoList) (enqueued
 
 // RunRepositorySyncWorker runs the worker that syncs repositories from external code hosts to Sourcegraph
 func RunRepositorySyncWorker(ctx context.Context) {
+	var shutdownPreviousScheduler context.CancelFunc
+	newSchedulerRunning, oldSchedulerRunning := false, false
 	conf.Watch(func() {
 		c := conf.Get()
 
-		repos.mu.Lock()
-		repos.autoUpdatesDisabled = c.DisableAutoGitUpdates
-		repos.mu.Unlock()
+		if conf.UpdateScheduler2Enabled() {
+			if oldSchedulerRunning {
+				log15.Info("shutting down old scheduler")
+				shutdownPreviousScheduler()
+				oldSchedulerRunning = false
+			}
+			if c.DisableAutoGitUpdates {
+				if newSchedulerRunning {
+					log15.Info("shutting down new scheduler (auto git updates disabled)")
+					shutdownPreviousScheduler()
+					newSchedulerRunning = false
+				}
+			} else {
+				if !newSchedulerRunning {
+					log15.Info("starting new scheduler")
+					ctx2, cancel := context.WithCancel(ctx)
+					scheduler.Run(ctx2)
+					shutdownPreviousScheduler = cancel
+					newSchedulerRunning = true
+				}
+			}
+		} else {
+			repos.mu.Lock()
+			repos.autoUpdatesDisabled = c.DisableAutoGitUpdates
+			repos.mu.Unlock()
 
-		repos.updateConfig(ctx, c.ReposList)
+			if newSchedulerRunning {
+				log15.Info("shutting down new scheduler")
+				shutdownPreviousScheduler()
+				newSchedulerRunning = false
+			}
+			if !oldSchedulerRunning {
+				log15.Info("starting old scheduler")
+				ctx2, cancel := context.WithCancel(ctx)
+				go repos.updateLoop(ctx2)
+				shutdownPreviousScheduler = cancel
+				oldSchedulerRunning = true
+			}
+			repos.updateConfig(ctx, c.ReposList)
+		}
 	})
-	go repos.updateLoop(ctx)
 }
 
 // updateConfig responds to changes in the configured list of repositories;
@@ -738,6 +782,8 @@ func RunRepositorySyncWorker(ctx context.Context) {
 func (r *repoList) updateConfig(ctx context.Context, configs []*schema.Repository) {
 	log15.Debug("repolist updateConfig")
 	newList := make(sourceRepoList)
+	newScheduler := conf.UpdateScheduler2Enabled()
+	newList2 := make(scheduler.SourceRepoList)
 	for _, cfg := range configs {
 		if cfg.Type == "" {
 			cfg.Type = "git"
@@ -755,7 +801,19 @@ func (r *repoList) updateConfig(ctx context.Context, configs []*schema.Repositor
 			log15.Warn("error creating or checking for repo", "repo", cfg.Path)
 			continue
 		}
+		if newScheduler {
+			newList2[api.RepoURI(cfg.Path)] = &scheduler.ConfiguredRepo{
+				URI:     api.RepoURI(cfg.Path),
+				URL:     cfg.Url,
+				Enabled: newRepo.Enabled,
+			}
+			return
+		}
 		newList[cfg.Path] = configuredRepo{url: cfg.Url, enabled: newRepo.Enabled}
+	}
+	if newScheduler {
+		scheduler.Repos.UpdateSource("internalConfig", newList2)
+		return
 	}
 	r.updateSource("internalConfig", newList)
 }

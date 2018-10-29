@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/sourcegraph/sourcegraph/cmd/repo-updater/internal/pkg/scheduler"
+	"github.com/sourcegraph/sourcegraph/pkg/conf"
 	"net/http"
 	"time"
 
@@ -59,6 +61,11 @@ func (s *Server) handleEnqueueRepoUpdate(w http.ResponseWriter, r *http.Request)
 	var req protocol.RepoUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if conf.UpdateScheduler2Enabled() {
+		scheduler.Repos.UpdateOnce(req.Repo, req.URL)
 		return
 	}
 
