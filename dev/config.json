@@ -2,7 +2,8 @@
 {
   "appURL": "http://localhost:3080",
   "experimentalFeatures": {
-    "discussions": "enabled"
+    "discussions": "enabled",
+    "updateScheduler2": "disabled"
   },
   "disablePublicRepoRedirects": true,
   "repoListUpdateInterval": 1,
