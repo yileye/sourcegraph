@@ -336,7 +336,7 @@ func (s *scheduler) rescheduleTimer() {
 		s.timer = nil
 	}
 	if len(s.schedule) > 0 {
-		delay := s.schedule[0].due.Sub(time.Now())
+		delay := time.Until(s.schedule[0].due)
 		s.timer = time.AfterFunc(delay, func() {
 			notify(s.wakeup)
 		})
