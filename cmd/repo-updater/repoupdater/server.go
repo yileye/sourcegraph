@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/sourcegraph/sourcegraph/cmd/repo-updater/internal/pkg/scheduler"
 	"github.com/sourcegraph/sourcegraph/pkg/conf"
 	"net/http"
 	"time"
@@ -65,7 +64,7 @@ func (s *Server) handleEnqueueRepoUpdate(w http.ResponseWriter, r *http.Request)
 	}
 
 	if conf.UpdateScheduler2Enabled() {
-		scheduler.Repos.UpdateOnce(req.Repo, req.URL)
+		repos.Scheduler.UpdateOnce(req.Repo, req.URL)
 		return
 	}
 

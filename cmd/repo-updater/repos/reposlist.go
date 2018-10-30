@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"context"
 	"fmt"
-	"github.com/sourcegraph/sourcegraph/cmd/repo-updater/internal/pkg/scheduler"
 	"math/rand"
 	"sort"
 	"strings"
@@ -54,11 +53,6 @@ import (
 // https://github.com/sourcegraph/docs-private/blob/master/201806/repo.md
 //
 // TODO: Separate "repos.list" code and the scheduler.
-
-const (
-	minDelay = 45 * time.Second
-	maxDelay = 8 * time.Hour
-)
 
 // repo represents a repository we're tracking.
 type repoData struct {
@@ -189,10 +183,10 @@ type repoList struct {
 
 // A configuredRepo represents the configuration data for a given repo from
 // a configuration source, such as information retrieved from GitHub for a
-// given GitHubConnection. The URI isn't present because it's the key used
-// to look the repo up in a sourceRepoList.
+// given GitHubConnection.
 type configuredRepo struct {
 	url     string
+	uri     api.RepoURI // only set and read by new scheduler. TODO Remove this comment when updateScheduler2 feature flag is disabled
 	enabled bool
 }
 
@@ -726,6 +720,9 @@ func (r *repoList) updateSource(source string, newList sourceRepoList) (enqueued
 	return enqueued, dequeued
 }
 
+// Scheduler schedules repo updates.
+var Scheduler = newUpdateScheduler()
+
 // RunRepositorySyncWorker runs the worker that syncs repositories from external code hosts to Sourcegraph
 func RunRepositorySyncWorker(ctx context.Context) {
 	var shutdownPreviousScheduler context.CancelFunc
@@ -749,10 +746,13 @@ func RunRepositorySyncWorker(ctx context.Context) {
 				if !newSchedulerRunning {
 					log15.Info("starting new scheduler")
 					ctx2, cancel := context.WithCancel(ctx)
-					scheduler.Run(ctx2)
+					Scheduler.run(ctx2)
 					shutdownPreviousScheduler = cancel
 					newSchedulerRunning = true
 				}
+				_, newMap := updateConfig(ctx, c.ReposList)
+				Scheduler.updateSource("internalConfig", newMap)
+				return
 			}
 		} else {
 			repos.mu.Lock()
@@ -771,7 +771,8 @@ func RunRepositorySyncWorker(ctx context.Context) {
 				shutdownPreviousScheduler = cancel
 				oldSchedulerRunning = true
 			}
-			repos.updateConfig(ctx, c.ReposList)
+			newList, _ := updateConfig(ctx, c.ReposList)
+			repos.updateSource("internalConfig", newList)
 		}
 	})
 }
@@ -779,11 +780,11 @@ func RunRepositorySyncWorker(ctx context.Context) {
 // updateConfig responds to changes in the configured list of repositories;
 // this is specifically the list of repositories directly configured, as opposed
 // to repositories found by looking up keys from various services.
-func (r *repoList) updateConfig(ctx context.Context, configs []*schema.Repository) {
+func updateConfig(ctx context.Context, configs []*schema.Repository) (sourceRepoList, sourceRepoMap) {
 	log15.Debug("repolist updateConfig")
 	newList := make(sourceRepoList)
 	newScheduler := conf.UpdateScheduler2Enabled()
-	newList2 := make(scheduler.SourceRepoList)
+	newMap := make(sourceRepoMap)
 	for _, cfg := range configs {
 		if cfg.Type == "" {
 			cfg.Type = "git"
@@ -802,20 +803,16 @@ func (r *repoList) updateConfig(ctx context.Context, configs []*schema.Repositor
 			continue
 		}
 		if newScheduler {
-			newList2[api.RepoURI(cfg.Path)] = &scheduler.ConfiguredRepo{
-				URI:     api.RepoURI(cfg.Path),
-				URL:     cfg.Url,
-				Enabled: newRepo.Enabled,
+			newMap[api.RepoURI(cfg.Path)] = &configuredRepo{
+				uri:     api.RepoURI(cfg.Path),
+				url:     cfg.Url,
+				enabled: newRepo.Enabled,
 			}
-			return
+			continue
 		}
 		newList[cfg.Path] = configuredRepo{url: cfg.Url, enabled: newRepo.Enabled}
 	}
-	if newScheduler {
-		scheduler.Repos.UpdateSource("internalConfig", newList2)
-		return
-	}
-	r.updateSource("internalConfig", newList)
+	return newList, newMap
 }
 
 // Snapshot represents the state of the various queues repo-updater

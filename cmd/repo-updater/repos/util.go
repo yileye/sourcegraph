@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/sourcegraph/sourcegraph/cmd/repo-updater/internal/pkg/scheduler"
 	"github.com/sourcegraph/sourcegraph/pkg/conf"
 	"net/http"
 	"net/url"
@@ -66,7 +65,7 @@ type repoCreateOrUpdateRequest struct {
 func createEnableUpdateRepos(ctx context.Context, source string, repoChan <-chan repoCreateOrUpdateRequest) {
 	newList := make(sourceRepoList)
 	newScheduler := conf.UpdateScheduler2Enabled()
-	newList2 := make(scheduler.SourceRepoList)
+	newMap := make(sourceRepoMap)
 
 	do := func(op repoCreateOrUpdateRequest) {
 		if op.RepoCreateOrUpdateRequest.RepoURI == "" {
@@ -86,10 +85,10 @@ func createEnableUpdateRepos(ctx context.Context, source string, repoChan <-chan
 		}
 
 		if newScheduler {
-			newList2[createdRepo.URI] = &scheduler.ConfiguredRepo{
-				URI:     createdRepo.URI,
-				URL:     op.URL,
-				Enabled: createdRepo.Enabled,
+			newMap[createdRepo.URI] = &configuredRepo{
+				uri:     createdRepo.URI,
+				url:     op.URL,
+				enabled: createdRepo.Enabled,
 			}
 			return
 		}
@@ -100,7 +99,7 @@ func createEnableUpdateRepos(ctx context.Context, source string, repoChan <-chan
 		do(repo)
 	}
 	if newScheduler {
-		scheduler.Repos.UpdateSource(source, newList2)
+		Scheduler.updateSource(source, newMap)
 		return
 	}
 	repos.updateSource(source, newList)
