@@ -13,7 +13,6 @@ import (
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/hooks"
 	"github.com/sourcegraph/sourcegraph/pkg/redispool"
 
-	"golang.org/x/crypto/ssh"
 	log15 "gopkg.in/inconshreveable/log15.v2"
 )
 
@@ -30,10 +29,10 @@ func init() {
 	hooks.AfterDBInit = func() {
 		go StartMaxUserCount()
 	}
-	// Make the Site.productSubscription.actualUserCount and Site.productSubscription.actualUserCountTime
+	// Make the Site.productSubscription.actualUserCount and Site.productSubscription.actualUserCountDate
 	// GraphQL fields return the proper max user count and timestamp on the current license.
 	graphqlbackend.ActualUserCount = actualUserCount
-	graphqlbackend.ActualUserCountTime = actualUserCountTime
+	graphqlbackend.ActualUserCountDate = actualUserCountDate
 }
 
 // setMaxUsers sets the max users associated with a license key if the new max count is greater than the previous max.
@@ -57,11 +56,16 @@ func setMaxUsers(key string, count int) error {
 }
 
 // GetMaxUsers gets the max users associated with a license key.
-func GetMaxUsers(signature *ssh.Signature) (int, string, error) {
+func GetMaxUsers(signature string) (int, string, error) {
 	c := pool.Get()
 	defer c.Close()
 
-	return getMaxUsers(c, keyFromSSHSignature(signature))
+	if signature == "" {
+		// No license key is in use.
+		return 0, "", nil
+	}
+
+	return getMaxUsers(c, signature)
 }
 
 func getMaxUsers(c redis.Conn, key string) (int, string, error) {
@@ -85,8 +89,8 @@ func getMaxUsers(c redis.Conn, key string) (int, string, error) {
 
 // checkMaxUsers runs periodically, and if a license key is in use, updates the
 // record of maximum count of user accounts in use.
-func checkMaxUsers(ctx context.Context, signature *ssh.Signature) error {
-	if signature == nil {
+func checkMaxUsers(ctx context.Context, signature string) error {
+	if signature == "" {
 		// No license key is in use.
 		return nil
 	}
@@ -96,7 +100,7 @@ func checkMaxUsers(ctx context.Context, signature *ssh.Signature) error {
 		log15.Error("licensing.checkMaxUsers: error getting user count", "error", err)
 		return err
 	}
-	err = setMaxUsers(keyFromSSHSignature(signature), int(count))
+	err = setMaxUsers(signature, int(count))
 	if err != nil {
 		log15.Error("licensing.checkMaxUsers: error setting new max users", "error", err)
 		return err
@@ -112,15 +116,11 @@ func maxUsersTimeKey() string {
 	return keyPrefix + "max_time"
 }
 
-func keyFromSSHSignature(signature *ssh.Signature) string {
-	return signature.Format + ":" + string(signature.Blob)
-}
-
 // actualUserCount returns the actual max number of users that have had accounts on the
 // Sourcegraph instance, under the current license.
 func actualUserCount(ctx context.Context) (int32, error) {
 	_, signature, err := GetConfiguredProductLicenseInfoWithSignature()
-	if err != nil || signature == nil {
+	if err != nil || signature == "" {
 		return 0, err
 	}
 
@@ -128,11 +128,11 @@ func actualUserCount(ctx context.Context) (int32, error) {
 	return int32(count), err
 }
 
-// actualUserCountTime returns the timestamp when the actual max number of users that have
+// actualUserCountDate returns the timestamp when the actual max number of users that have
 // had accounts on the Sourcegraph instance, under the current license, was reached.
-func actualUserCountTime(ctx context.Context) (string, error) {
+func actualUserCountDate(ctx context.Context) (string, error) {
 	_, signature, err := GetConfiguredProductLicenseInfoWithSignature()
-	if err != nil || signature == nil {
+	if err != nil || signature == "" {
 		return "", err
 	}
 
@@ -153,7 +153,7 @@ func StartMaxUserCount() {
 		_, signature, err := GetConfiguredProductLicenseInfoWithSignature()
 		if err != nil {
 			log15.Error("licensing.StartMaxUserCount: error getting configured license info")
-		} else if signature != nil {
+		} else if signature != "" {
 			ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 			_ = checkMaxUsers(ctx, signature) // updates global state on its own, can safely ignore return value
 			cancel()

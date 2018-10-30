@@ -16,9 +16,9 @@ var ActualUserCount = func(ctx context.Context) (int32, error) {
 	return 0, nil
 }
 
-// ActualUserCountTime is called to obtain the timestamp when the actual maximum number of user accounts
+// ActualUserCountDate is called to obtain the timestamp when the actual maximum number of user accounts
 // that have been active on this Sourcegraph instance for the current license was reached.
-var ActualUserCountTime = func(ctx context.Context) (string, error) {
+var ActualUserCountDate = func(ctx context.Context) (string, error) {
 	return "", nil
 }
 
@@ -42,8 +42,8 @@ func (productSubscriptionStatus) ActualUserCount(ctx context.Context) (int32, er
 	return ActualUserCount(ctx)
 }
 
-func (productSubscriptionStatus) ActualUserCountTime(ctx context.Context) (string, error) {
-	return ActualUserCountTime(ctx)
+func (productSubscriptionStatus) ActualUserCountDate(ctx context.Context) (string, error) {
+	return ActualUserCountDate(ctx)
 }
 
 func (r productSubscriptionStatus) License() (*ProductLicenseInfo, error) {

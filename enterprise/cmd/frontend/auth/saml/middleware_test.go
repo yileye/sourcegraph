@@ -10,7 +10,6 @@ import (
 	"encoding/pem"
 	"encoding/xml"
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -170,8 +169,8 @@ func TestMiddleware(t *testing.T) {
 	idpHTTPServer, idpServer := newSAMLIDPServer(t)
 	defer idpHTTPServer.Close()
 
-	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, *ssh.Signature, error) {
-		return &license.Info{Tags: licensing.EnterpriseTags}, nil, nil
+	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, string, error) {
+		return &license.Info{Tags: licensing.EnterpriseTags}, "test-signature", nil
 	}
 	defer func() { licensing.MockGetConfiguredProductLicenseInfo = nil }()
 

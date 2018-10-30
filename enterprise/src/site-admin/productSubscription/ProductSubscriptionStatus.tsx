@@ -64,7 +64,7 @@ export class ProductSubscriptionStatus extends React.Component<Props, State> {
         }
 
         console.log(this.state.statusOrError)
-        const { productNameWithBrand, actualUserCount, actualUserCountTime, license } = this.state.statusOrError
+        const { productNameWithBrand, actualUserCount, actualUserCountDate, license } = this.state.statusOrError
 
         // No license means Sourcegraph Core. For that, show the user that they can use this for free
         // forever, and show them how to upgrade.
@@ -134,7 +134,7 @@ export class ProductSubscriptionStatus extends React.Component<Props, State> {
                     (this.props.showTrueUpStatus ? (
                         <TrueUpStatusSummary
                             actualUserCount={actualUserCount}
-                            actualUserCountTime={actualUserCountTime}
+                            actualUserCountDate={actualUserCountDate}
                             license={license}
                         />
                     ) : (
@@ -160,7 +160,7 @@ export class ProductSubscriptionStatus extends React.Component<Props, State> {
                     productSubscription {
                         productNameWithBrand
                         actualUserCount
-                        actualUserCountTime
+                        actualUserCountDate
                         license {
                             tags
                             userCount
