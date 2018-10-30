@@ -11,6 +11,10 @@ All notable changes to Sourcegraph are documented in this file.
 
 ### Changed
 
+### Fixed
+
+- Fixed an issue where the site admin License page showed a count of current users, rather than the max number of users over the life of the license.
+
 ### Removed
 
 - The **Explore** page was replaced with a **Repositories** search link in the top navigation bar.

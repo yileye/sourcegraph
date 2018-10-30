@@ -5,6 +5,7 @@ require (
 	github.com/coreos/go-oidc v0.0.0-20171002155002-a93f71fdfe73
 	github.com/crewjam/saml v0.0.0-20180831135026-ebc5f787b786
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
+	github.com/garyburd/redigo v1.6.0
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/uuid v1.0.0
 	github.com/google/zoekt v0.0.0-20180530125106-8e284ca7e964
@@ -31,7 +32,7 @@ require (
 	github.com/prometheus/client_golang v0.8.0
 	github.com/russellhaering/gosaml2 v0.3.1
 	github.com/russellhaering/goxmldsig v0.0.0-20180430223755-7acd5e4a6ef7
-	github.com/shurcooL/vfsgen v0.0.0-20180915214035-33ae1944be3f
+	github.com/shurcooL/vfsgen v0.0.0-20180915214035-33ae1944be3f // indirect
 	github.com/slimsag/godocmd v0.0.0-20161025000126-a1005ad29fe3 // indirect
 	github.com/sourcegraph/ctxvfs v0.0.0-20180418081416-2b65f1b1ea81
 	github.com/sourcegraph/go-jsonschema v0.0.0-20180805125535-0e659b54484d

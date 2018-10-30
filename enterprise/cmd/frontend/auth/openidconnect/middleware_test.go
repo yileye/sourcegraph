@@ -23,6 +23,8 @@ import (
 
 	oidc "github.com/coreos/go-oidc"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/external/session"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // providerJSON is the JSON structure the OIDC provider returns at its discovery endpoing
@@ -117,8 +119,8 @@ func TestMiddleware(t *testing.T) {
 	cleanup := session.ResetMockSessionStore(t)
 	defer cleanup()
 
-	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, error) {
-		return &license.Info{Tags: licensing.EnterpriseTags}, nil
+	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, *ssh.Signature, error) {
+		return &license.Info{Tags: licensing.EnterpriseTags}, nil, nil
 	}
 	defer func() { licensing.MockGetConfiguredProductLicenseInfo = nil }()
 
@@ -297,8 +299,8 @@ func TestMiddleware_NoOpenRedirect(t *testing.T) {
 	cleanup := session.ResetMockSessionStore(t)
 	defer cleanup()
 
-	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, error) {
-		return &license.Info{Tags: licensing.EnterpriseTags}, nil
+	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, *ssh.Signature, error) {
+		return &license.Info{Tags: licensing.EnterpriseTags}, nil, nil
 	}
 	defer func() { licensing.MockGetConfiguredProductLicenseInfo = nil }()
 

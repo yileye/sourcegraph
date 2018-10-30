@@ -11,11 +11,13 @@ import (
 	"github.com/sourcegraph/sourcegraph/pkg/conf"
 	"github.com/sourcegraph/sourcegraph/pkg/registry"
 	"github.com/sourcegraph/sourcegraph/schema"
+
+	"golang.org/x/crypto/ssh"
 )
 
 func TestIsRemoteExtensionAllowed(t *testing.T) {
-	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, error) {
-		return &license.Info{Tags: licensing.EnterpriseTags}, nil
+	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, *ssh.Signature, error) {
+		return &license.Info{Tags: licensing.EnterpriseTags}, nil, nil
 	}
 	defer func() { licensing.MockGetConfiguredProductLicenseInfo = nil }()
 	defer conf.Mock(nil)
@@ -58,8 +60,8 @@ func sameElements(a, b []string) bool {
 }
 
 func TestFilterRemoteExtensions(t *testing.T) {
-	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, error) {
-		return &license.Info{Tags: licensing.EnterpriseTags}, nil
+	licensing.MockGetConfiguredProductLicenseInfo = func() (*license.Info, *ssh.Signature, error) {
+		return &license.Info{Tags: licensing.EnterpriseTags}, nil, nil
 	}
 	defer func() { licensing.MockGetConfiguredProductLicenseInfo = nil }()
 

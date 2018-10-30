@@ -127,7 +127,7 @@ func GenerateSignedKey(info Info, privateKey ssh.Signer) (string, error) {
 
 // ParseSignedKey parses and verifies the signed license key. If parsing or verification fails, a
 // non-nil error is returned.
-func ParseSignedKey(text string, publicKey ssh.PublicKey) (info *Info, err error) {
+func ParseSignedKey(text string, publicKey ssh.PublicKey) (info *Info, signature *ssh.Signature, err error) {
 	// Ignore whitespace, in case the license key was (e.g.) wrapped in an email message.
 	text = strings.Map(func(c rune) rune {
 		if unicode.IsSpace(c) {
@@ -138,14 +138,14 @@ func ParseSignedKey(text string, publicKey ssh.PublicKey) (info *Info, err error
 
 	signedKeyData, err := base64.RawURLEncoding.DecodeString(text)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var signedKey signedKey
 	if err := json.Unmarshal(signedKeyData, &signedKey); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := json.Unmarshal(signedKey.EncodedInfo, &info); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return info, publicKey.Verify(signedKey.EncodedInfo, signedKey.Signature)
+	return info, signedKey.Signature, publicKey.Verify(signedKey.EncodedInfo, signedKey.Signature)
 }
