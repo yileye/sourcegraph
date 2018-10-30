@@ -98,7 +98,7 @@ func (s *repos) Count(ctx context.Context, opt ReposListOptions) (int, error) {
 }
 
 func (s *repos) getBySQL(ctx context.Context, querySuffix *sqlf.Query) ([]*types.Repo, error) {
-	q := sqlf.Sprintf("SELECT id, uri, description, language, enabled, indexed_revision, created_at, updated_at, freeze_indexed_revision, external_id, external_service_type, external_service_id FROM repo %s", querySuffix)
+	q := sqlf.Sprintf("SELECT id, uri, description, language, enabled, created_at, updated_at, external_id, external_service_type, external_service_id FROM repo %s", querySuffix)
 	rows, err := dbconn.Global.QueryContext(ctx, q.Query(sqlf.PostgresBindVar), q.Args()...)
 	if err != nil {
 		return nil, err
@@ -108,7 +108,6 @@ func (s *repos) getBySQL(ctx context.Context, querySuffix *sqlf.Query) ([]*types
 	var repos []*types.Repo
 	for rows.Next() {
 		var repo types.Repo
-		var freezeIndexedRevision *bool
 		var spec dbExternalRepoSpec
 
 		if err := rows.Scan(
@@ -117,16 +116,13 @@ func (s *repos) getBySQL(ctx context.Context, querySuffix *sqlf.Query) ([]*types
 			&repo.Description,
 			&repo.Language,
 			&repo.Enabled,
-			&repo.IndexedRevision,
 			&repo.CreatedAt,
 			&repo.UpdatedAt,
-			&freezeIndexedRevision,
 			&spec.id, &spec.serviceType, &spec.serviceID,
 		); err != nil {
 			return nil, err
 		}
 
-		repo.FreezeIndexedRevision = freezeIndexedRevision != nil && *freezeIndexedRevision // FIXME: bad DB schema: nullable boolean
 		repo.ExternalRepo = spec.toAPISpec()
 
 		repos = append(repos, &repo)
@@ -177,9 +173,6 @@ type ReposListOptions struct {
 	// indexed. An example use case of this is for indexed search only
 	// indexing a subset of repositories.
 	Index *bool
-
-	// Filters repositories based on whether they have an IndexedRevision set.
-	HasIndexedRevision *bool
 
 	// List of fields by which to order the return repositories.
 	OrderBy RepoListOrderBy
@@ -327,13 +320,6 @@ func (*repos) listSQL(opt ReposListOptions) (conds []*sqlf.Query, err error) {
 		conds = append(conds, sqlf.Sprintf("NOT enabled"))
 	} else {
 		return nil, errors.New("Repos.List: must specify at least one of Enabled=true or Disabled=true")
-	}
-	if opt.HasIndexedRevision != nil {
-		if *opt.HasIndexedRevision {
-			conds = append(conds, sqlf.Sprintf("indexed_revision IS NOT NULL"))
-		} else {
-			conds = append(conds, sqlf.Sprintf("indexed_revision IS NULL"))
-		}
 	}
 	if opt.NoForks {
 		conds = append(conds, sqlf.Sprintf("NOT fork"))
@@ -512,19 +498,10 @@ func allMatchingStrings(re *regexpsyntax.Regexp) (exact, contains, prefix, suffi
 	return nil, nil, nil, nil, nil
 }
 
-// Delete deletes the repository row from the repo table. It will also delete any rows in the GlobalDeps and Pkgs stores
-// that reference the deleted repository row.
+// Delete deletes the repository row from the repo table.
 func (s *repos) Delete(ctx context.Context, repo api.RepoID) error {
 	if Mocks.Repos.Delete != nil {
 		return Mocks.Repos.Delete(ctx, repo)
-	}
-
-	// Delete entries in pkgs and global_dep tables that correspond to the repo first
-	if err := GlobalDeps.Delete(ctx, repo); err != nil {
-		return err
-	}
-	if err := Pkgs.Delete(ctx, repo); err != nil {
-		return err
 	}
 
 	// Hard delete entries in the discussions tables that correspond to the repo.
@@ -564,11 +541,6 @@ func (s *repos) SetEnabled(ctx context.Context, id api.RepoID, enabled bool) err
 
 func (s *repos) UpdateLanguage(ctx context.Context, repo api.RepoID, language string) error {
 	_, err := dbconn.Global.ExecContext(ctx, "UPDATE repo SET language=$1 WHERE id=$2", language, repo)
-	return err
-}
-
-func (s *repos) UpdateIndexedRevision(ctx context.Context, repo api.RepoID, commitID api.CommitID) error {
-	_, err := dbconn.Global.ExecContext(ctx, "UPDATE repo SET indexed_revision=$1 WHERE id=$2", commitID, repo)
 	return err
 }
 
