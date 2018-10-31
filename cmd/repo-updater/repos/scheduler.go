@@ -46,6 +46,9 @@ type updateScheduler struct {
 	schedule    *schedule
 }
 
+// sourceRepoMap is the set of repositories associated with a specific configuration source.
+type sourceRepoMap map[api.RepoURI]*configuredRepo
+
 // newUpdateScheduler returns a new scheduler.
 func newUpdateScheduler() *updateScheduler {
 	return &updateScheduler{
@@ -86,7 +89,7 @@ func (s *updateScheduler) runScheduleLoop(ctx context.Context) {
 				break
 			}
 
-			s.updateQueue.enqueueBackground(repoUpdate.repo)
+			s.updateQueue.enqueue(repoUpdate.repo, priorityLow)
 			repoUpdate.due = dueTimeFromNow(repoUpdate.interval)
 			heap.Fix(s.schedule, 0)
 		}
@@ -114,7 +117,7 @@ func (s *updateScheduler) runUpdateLoop(ctx context.Context) {
 			return
 		}
 
-		for repo := s.updateQueue.dequeue(); repo != nil; {
+		for repo := s.updateQueue.acquireNext(); repo != nil; {
 			ctx, cancel, err := limiter.Acquire(ctx)
 			if err != nil {
 				// context is canceled; shutdown
@@ -122,12 +125,14 @@ func (s *updateScheduler) runUpdateLoop(ctx context.Context) {
 			}
 			go func(ctx context.Context, repo *configuredRepo, cancel context.CancelFunc) {
 				defer cancel()
+				defer s.updateQueue.remove(repo)
+
 				resp, err := gitserver.DefaultClient.RequestRepoUpdate(ctx, gitserver.Repo{Name: repo.uri, URL: repo.url}, 1*time.Second)
 				if err != nil {
 					log15.Warn("error requesting repo update", "uri", repo.uri, "err", err)
 				}
 				if resp.LastFetched != nil && resp.LastChanged != nil {
-					// This is the heuristic that is described in the package documentation.
+					// This is the heuristic that is described in the updateScheduler documentation.
 					// Update that documentation if you update this logic.
 					interval := resp.LastFetched.Sub(*resp.LastChanged) / 2
 					s.schedule.update(repo, interval)
@@ -164,7 +169,7 @@ func (s *updateScheduler) updateSource(source string, newList sourceRepoMap) {
 		oldRepo := oldList[key]
 		if oldRepo == nil || !oldRepo.enabled {
 			s.schedule.add(updatedRepo)
-			s.updateQueue.enqueueBackground(updatedRepo)
+			s.updateQueue.enqueue(updatedRepo, priorityLow)
 		}
 	}
 
@@ -178,20 +183,16 @@ func (s *updateScheduler) UpdateOnce(uri api.RepoURI, url string) {
 		uri: uri,
 		url: url,
 	}
-	s.updateQueue.enqueuePriority(repo)
+	s.updateQueue.enqueue(repo, priorityHigh)
 }
 
-// updateQueue is a queue of repos to update.
-// There are two priority levels: priority and background.
+// updateQueue is a priority queue of repos to update.
 // A repo can't have more than one location in the queue.
 type updateQueue struct {
 	mu sync.Mutex
 
-	priority      []*configuredRepo
-	priorityIndex map[api.RepoURI]int
-
-	background      []*configuredRepo
-	backgroundIndex map[api.RepoURI]int
+	heap  []*repoUpdate
+	index map[api.RepoURI]*repoUpdate
 
 	// The queue performs a non-blocking send on this channel
 	// when a new value is enqueued so that the update loop
@@ -199,87 +200,116 @@ type updateQueue struct {
 	notifyEnqueue chan struct{}
 }
 
-// enqueueBackground enqueues the repo into the background queue.
-// It does nothing if the repo already exists in the priority or background queue.
-func (q *updateQueue) enqueueBackground(repo *configuredRepo) {
+type priority int
+
+const (
+	priorityLow priority = iota
+	priorityHigh
+)
+
+// repoUpdate is a repository that has been queued for an update.
+type repoUpdate struct {
+	repo       *configuredRepo
+	priority   priority
+	insertTime time.Time // the time that the update was inserted into the queue
+	updating   bool      // whether the repo has been acquired for update
+	index      int       // the index in the heap
+}
+
+// enqueue add the repo to the queue with the given priority.
+func (q *updateQueue) enqueue(repo *configuredRepo, p priority) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	if _, ok := q.priorityIndex[repo.uri]; ok {
-		return
-	}
-	if _, ok := q.backgroundIndex[repo.uri]; ok {
+	update := q.index[repo.uri]
+	if update == nil {
+		heap.Push(q, &repoUpdate{
+			repo:     repo,
+			priority: p,
+		})
+		notify(q.notifyEnqueue)
 		return
 	}
 
-	q.backgroundIndex[repo.uri] = len(q.background)
-	q.background = append(q.background, repo)
+	if p <= update.priority {
+		// Repo is already in the queue with at least as good priority.
+		return
+	}
+
+	// Repo is in the queue at a lower priority.
+	update.priority = p           // bump the priority
+	update.insertTime = timeNow() // put it after all existing updates with this priority
+	heap.Fix(q, update.index)
 	notify(q.notifyEnqueue)
 }
 
-// enqueuePriority enqueues the repo into the priority queue
-// and removes it from the background queue.
-// It does nothing if the repo already exists in the priority queue.
-func (q *updateQueue) enqueuePriority(repo *configuredRepo) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	if _, ok := q.priorityIndex[repo.uri]; ok {
-		// Already in the priority queue.
-		return
-	}
-
-	q.removeBackground(repo.uri)
-	q.priorityIndex[repo.uri] = len(q.priority)
-	q.priority = append(q.priority, repo)
-	notify(q.notifyEnqueue)
-}
-
-// remove removes the repo from both the priority and background queues.
+// remove removes the repo from the queue.
 func (q *updateQueue) remove(repo *configuredRepo) {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-
-	q.removeBackground(repo.uri)
-	if idx, ok := q.priorityIndex[repo.uri]; ok {
-		q.priority = append(q.priority[:idx], q.priority[idx+1:]...)
-		delete(q.priorityIndex, repo.uri)
+	if update := q.index[repo.uri]; update != nil {
+		heap.Remove(q, update.index)
 	}
+	q.mu.Unlock()
 }
 
-// removeBackground removes the repo from the background queue.
-// The caller must hold the lock for q.mu.
-func (q *updateQueue) removeBackground(uri api.RepoURI) {
-	if idx, ok := q.backgroundIndex[uri]; ok {
-		q.background = append(q.background[:idx], q.background[idx+1:]...)
-		delete(q.backgroundIndex, uri)
-	}
-}
-
-// dequeue dequeues a repo from the priority queue if it is not empty.
-// Otherwise, it dequeues from the background queue instead.
-func (q *updateQueue) dequeue() *configuredRepo {
+// acquireNext acquires the next repo for update.
+// The acquired repo must be removed from the queue
+// when the update finishes (independent of success or failure).
+func (q *updateQueue) acquireNext() *configuredRepo {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-
-	if len(q.priority) > 0 {
-		front := q.priority[0]
-		q.priority = q.priority[1:]
-		delete(q.priorityIndex, front.uri)
-		return front
+	if len(q.heap) == 0 {
+		return nil
 	}
-
-	if len(q.background) > 0 {
-		front := q.background[0]
-		q.background = q.background[1:]
-		delete(q.backgroundIndex, front.uri)
-		return front
+	update := q.heap[0]
+	if update.updating {
+		// Everything in the queue is already updating.
+		return nil
 	}
-	return nil
+	update.updating = true
+	heap.Fix(q, update.index)
+	return update.repo
 }
 
-// sourceRepoMap is the set of repositories associated with a specific configuration source.
-type sourceRepoMap map[api.RepoURI]*configuredRepo
+// The following methods implement heap.Interface based on the priority queue example:
+// https://golang.org/pkg/container/heap/#example__priorityQueue
+
+func (q *updateQueue) Len() int { return len(q.heap) }
+func (q *updateQueue) Less(i, j int) bool {
+	qi := q.heap[i]
+	qj := q.heap[i]
+	if qi.updating != qj.updating {
+		// Repos that are already updating are sorted last.
+		return qj.updating
+	}
+	if qi.priority != qj.priority {
+		// We want Pop to give us the highest, not lowest, priority so we use greater than here.
+		return qi.priority > qj.priority
+	}
+	// Queue semantics for items with the same priority.
+	return qi.insertTime.Before(qj.insertTime)
+}
+func (q *updateQueue) Swap(i, j int) {
+	q.heap[i], q.heap[j] = q.heap[j], q.heap[i]
+	q.heap[i].index = i
+	q.heap[j].index = j
+}
+func (q *updateQueue) Push(x interface{}) {
+	n := len(q.heap)
+	item := x.(*repoUpdate)
+	item.index = n
+	item.insertTime = timeNow()
+	q.heap = append(q.heap, item)
+	q.index[item.repo.uri] = item
+}
+func (q *updateQueue) Pop() interface{} {
+	n := len(q.heap)
+	item := q.heap[n-1]
+	item.index = -1 // for safety
+	q.heap = q.heap[0 : n-1]
+	delete(q.index, item.repo.uri)
+	return item
+}
 
 // schedule is the schedule of when repos get enqueued into the updateQueue.
 type schedule struct {
