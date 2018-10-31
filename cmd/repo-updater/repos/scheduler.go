@@ -38,9 +38,9 @@ const (
 type updateScheduler struct {
 	mu sync.Mutex
 
-	// confRepos stores the last known list of repos from each source
+	// sourceRepos stores the last known list of repos from each source
 	// so we can compute which repos have been added/removed/enabled/disabled.
-	confRepos map[string]sourceRepoMap
+	sourceRepos map[string]sourceRepoMap
 
 	updateQueue *updateQueue
 	schedule    *schedule
@@ -52,7 +52,7 @@ type sourceRepoMap map[api.RepoURI]*configuredRepo
 // newUpdateScheduler returns a new scheduler.
 func newUpdateScheduler() *updateScheduler {
 	return &updateScheduler{
-		confRepos: make(map[string]sourceRepoMap),
+		sourceRepos: make(map[string]sourceRepoMap),
 		updateQueue: &updateQueue{
 			notifyEnqueue: make(chan struct{}, 1),
 		},
@@ -147,12 +147,12 @@ func (s *updateScheduler) runUpdateLoop(ctx context.Context) {
 func (s *updateScheduler) updateSource(source string, newList sourceRepoMap) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.confRepos[source] == nil {
-		s.confRepos[source] = sourceRepoMap{}
+	if s.sourceRepos[source] == nil {
+		s.sourceRepos[source] = sourceRepoMap{}
 	}
 
 	// Remove repos that don't exist in the new list or are disabled in the new list.
-	oldList := s.confRepos[source]
+	oldList := s.sourceRepos[source]
 	for key, repo := range oldList {
 		if updatedRepo, ok := newList[key]; !ok || !updatedRepo.enabled {
 			s.schedule.remove(repo)
@@ -173,7 +173,7 @@ func (s *updateScheduler) updateSource(source string, newList sourceRepoMap) {
 		}
 	}
 
-	s.confRepos[source] = newList
+	s.sourceRepos[source] = newList
 }
 
 // UpdateOnce causes a single update of the given repository.
