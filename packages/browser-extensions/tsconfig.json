@@ -12,6 +12,7 @@
     "jsx": "react",
     "allowJs": true,
     "checkJs": true,
+    "resolveJsonModule": true,
     "sourceMap": true,
     "strictNullChecks": true,
     "experimentalDecorators": true,
