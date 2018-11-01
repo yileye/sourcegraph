@@ -50,7 +50,8 @@ export async function webpackDevServer(): Promise<void> {
     const server = new WebpackDevServer(compiler as any, {
         publicPath: '/.assets/',
         contentBase: './ui/assets',
-        stats: WEBPACK_STATS_OPTIONS,
+        // TODO(chris) figure out why this suppresses some errors
+        // stats: WEBPACK_STATS_OPTIONS,
         noInfo: false,
         proxy: {
             '/': {
