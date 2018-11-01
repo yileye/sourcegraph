@@ -81,10 +81,8 @@ func main() {
 		bk.Env("FORCE_COLOR", "1"),
 		bk.Cmd("yarn --frozen-lockfile"),
 		bk.Cmd("yarn workspace webapp run cover"),
-		bk.Cmd("pushd packages/webapp"),
-		bk.Cmd("node_modules/.bin/nyc report -r json"),
-		bk.Cmd("popd"),
-		bk.ArtifactPaths("packages/webapp/coverage/coverage-final.json"))
+		bk.Cmd("yarn workspace webapp nyc report -r json"),
+		bk.Cmd("cd packages/webapp && bash <(curl -s https://codecov.io/bash) -X gcov -X coveragepy -X xcode"))
 
 	pipeline.AddStep(":docker:",
 		bk.Cmd("curl -sL -o hadolint \"https://github.com/hadolint/hadolint/releases/download/v1.6.5/hadolint-$(uname -s)-$(uname -m)\" && chmod 700 hadolint"),
@@ -96,7 +94,7 @@ func main() {
 	pipeline.AddStep(":go:",
 		bk.Cmd("./dev/ci/reset-test-db.sh || true"),
 		bk.Cmd("go test -coverprofile=coverage.txt -covermode=atomic -race ./..."),
-		bk.ArtifactPaths("coverage.txt"))
+		bk.Cmd("bash <(curl -s https://codecov.io/bash) -X gcov -X coveragepy -X xcode"))
 
 	pipeline.AddStep(":typescript:",
 		bk.Env("CYPRESS_INSTALL_BINARY", "0"),
@@ -133,14 +131,6 @@ func main() {
 		bk.Cmd("yarn workspace browser-extensions run build"),
 		bk.Cmd("yarn workspace browser-extensions run test:ci"),
 		bk.Cmd("yarn workspace browser-extensions run test:e2e"))
-
-	pipeline.AddWait()
-
-	// Does this still work after moving the webapp to packages/webapp?
-	pipeline.AddStep(":codecov:",
-		bk.Cmd("buildkite-agent artifact download 'coverage.txt' . || true"), // ignore error when no report exists
-		bk.Cmd("buildkite-agent artifact download '*/coverage-final.json' . || true"),
-		bk.Cmd("bash <(curl -s https://codecov.io/bash) -X gcov -X coveragepy -X xcode"))
 
 	pipeline.AddWait()
 
