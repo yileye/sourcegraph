@@ -1,4 +1,4 @@
-import formatDistance from 'date-fns/formatDistance'
+import { distanceInWords } from 'date-fns'
 import * as React from 'react'
 
 interface Props {
@@ -29,7 +29,7 @@ export class Timestamp extends React.PureComponent<Props> {
     }
 
     public render(): JSX.Element {
-        let label = formatDistance(this.props.date, new Date(), { addSuffix: true, includeSeconds: true })
+        let label = distanceInWords(this.props.date, new Date(), { addSuffix: true, includeSeconds: true })
         if (this.props.noAbout) {
             label = label.replace('about ', '')
         }

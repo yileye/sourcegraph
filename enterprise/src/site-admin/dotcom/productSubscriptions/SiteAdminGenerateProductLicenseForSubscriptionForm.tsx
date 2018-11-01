@@ -1,5 +1,5 @@
-import addDays from 'date-fns/addDays'
-import endOfDay from 'date-fns/endOfDay'
+import { addDays } from 'date-fns'
+import { endOfDay } from 'date-fns'
 import { upperFirst } from 'lodash'
 import * as React from 'react'
 import { Observable, Subject, Subscription } from 'rxjs'

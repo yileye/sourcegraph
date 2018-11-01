@@ -1,4 +1,4 @@
-import formatDistanceStrict from 'date-fns/formatDistanceStrict'
+import { distanceInWordsStrict } from 'date-fns'
 import ChevronRightIcon from 'mdi-react/ChevronRightIcon'
 import React from 'react'
 import { Link } from 'react-router-dom'
@@ -86,7 +86,7 @@ export class DiscussionsExploreSection extends React.PureComponent<Props, State>
                                                     </span>
                                                 ))}{' '}
                                                 &mdash;{' '}
-                                                {formatDistanceStrict(thread.updatedAt, Date.now(), {
+                                                {distanceInWordsStrict(thread.updatedAt, Date.now(), {
                                                     addSuffix: true,
                                                 })}
                                             </div>

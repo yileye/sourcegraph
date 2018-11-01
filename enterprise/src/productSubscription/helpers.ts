@@ -1,5 +1,5 @@
-import formatDistanceStrict from 'date-fns/formatDistanceStrict'
-import isAfter from 'date-fns/isAfter'
+import { distanceInWordsStrict } from 'date-fns'
+import { isAfter } from 'date-fns'
 import { numberWithCommas, pluralize } from '../../../packages/webapp/src/util/strings'
 
 /**
@@ -23,7 +23,7 @@ export function isProductLicenseExpired(expiresAt: string | number): boolean {
  * Returns "T remaining" or "T ago" for an expiration date.
  */
 export function formatRelativeExpirationDate(date: string | number): string {
-    return `${formatDistanceStrict(date, Date.now())} ${isProductLicenseExpired(date) ? 'ago' : 'remaining'}`
+    return `${distanceInWordsStrict(date, Date.now())} ${isProductLicenseExpired(date) ? 'ago' : 'remaining'}`
 }
 
 /**

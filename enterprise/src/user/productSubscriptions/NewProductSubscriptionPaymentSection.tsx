@@ -1,5 +1,5 @@
 import { LoadingSpinner } from '@sourcegraph/react-loading-spinner'
-import formatDistanceStrict from 'date-fns/formatDistanceStrict'
+import { distanceInWordsStrict } from 'date-fns'
 import { isEqual } from 'lodash'
 import ErrorIcon from 'mdi-react/ErrorIcon'
 import * as React from 'react'
@@ -166,7 +166,7 @@ export class NewProductSubscriptionPaymentSection extends React.PureComponent<
                     ) : (
                         <>
                             Total: ${numberWithCommas(this.state.previewInvoiceOrError.price / 100)} for{' '}
-                            {formatDistanceStrict(
+                            {distanceInWordsStrict(
                                 this.state.previewInvoiceOrError.afterInvoiceItem.expiresAt,
                                 Date.now()
                             )}{' '}

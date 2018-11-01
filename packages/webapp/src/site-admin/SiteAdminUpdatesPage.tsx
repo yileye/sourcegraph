@@ -1,5 +1,5 @@
 import { LoadingSpinner } from '@sourcegraph/react-loading-spinner'
-import formatDistance from 'date-fns/formatDistance'
+import { distanceInWords } from 'date-fns'
 import { upperFirst } from 'lodash'
 import CheckIcon from 'mdi-react/CheckIcon'
 import CloudDownloadIcon from 'mdi-react/CloudDownloadIcon'
@@ -108,7 +108,7 @@ export class SiteAdminUpdatesPage extends React.Component<Props, State> {
                     <small>
                         <strong>Last update check:</strong>{' '}
                         {this.state.updateCheck && this.state.updateCheck.checkedAt
-                            ? formatDistance(this.state.updateCheck.checkedAt, new Date(), { addSuffix: true })
+                            ? distanceInWords(this.state.updateCheck.checkedAt, new Date(), { addSuffix: true })
                             : 'never'}.
                     </small>
                     <br />

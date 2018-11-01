@@ -1,4 +1,4 @@
-import formatDistance from 'date-fns/formatDistance'
+import { distanceInWords } from 'date-fns'
 import * as H from 'history'
 import SourceCommitIcon from 'mdi-react/SourceCommitIcon'
 import * as React from 'react'
@@ -106,7 +106,7 @@ export const CommitSearchResult: React.StatelessComponent<Props> = (props: Props
                     onClick={stopPropagationToCollapseOrExpand}
                     onMouseDown={logClickOnTimestamp}
                 >
-                    {formatDistance(props.result.commit.author.date, new Date(), {
+                    {distanceInWords(props.result.commit.author.date, new Date(), {
                         addSuffix: true,
                     })}
                 </Link>
