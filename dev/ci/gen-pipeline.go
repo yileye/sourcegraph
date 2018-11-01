@@ -70,6 +70,8 @@ func main() {
 		bk.Env("FORCE_COLOR", "1"),
 		bk.Cmd("yarn --frozen-lockfile"),
 		bk.Cmd("yarn workspace webapp run browserslist"),
+		bk.Cmd("yarn workspace sourcegraph run build"),
+		bk.Cmd("yarn workspace @sourcegraph/extensions-client-common run build"),
 		bk.Cmd("NODE_ENV=production yarn workspace webapp run build --color"),
 		bk.Cmd("GITHUB_TOKEN= yarn workspace webapp run bundlesize"))
 
@@ -112,6 +114,7 @@ func main() {
 		bk.Env("CYPRESS_INSTALL_BINARY", "0"),
 		bk.Env("PUPPETEER_SKIP_CHROMIUM_DOWNLOAD", "true"),
 		bk.Cmd("yarn --frozen-lockfile"),
+		bk.Cmd("yarn workspace sourcegraph run build"),
 		bk.Cmd("yarn workspace @sourcegraph/extensions-client-common run prettier"),
 		bk.Cmd("yarn workspace @sourcegraph/extensions-client-common run tslint"),
 		bk.Cmd("yarn workspace @sourcegraph/extensions-client-common run build"),
@@ -122,6 +125,8 @@ func main() {
 
 	pipeline.AddStep(":typescript:",
 		bk.Cmd("yarn --frozen-lockfile"),
+		bk.Cmd("yarn workspace sourcegraph run build"),
+		bk.Cmd("yarn workspace @sourcegraph/extensions-client-common run build"),
 		bk.Cmd("yarn workspace browser-extensions run prettier"),
 		bk.Cmd("yarn workspace browser-extensions run tslint"),
 		bk.Cmd("yarn workspace browser-extensions run browserslist"),
