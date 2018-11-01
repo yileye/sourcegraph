@@ -1,6 +1,7 @@
 import { assert } from 'chai'
 import { of } from 'rxjs'
 import { TestScheduler } from 'rxjs/testing'
+import { ThemableDecorationStyle } from 'sourcegraph'
 import { TextDocumentIdentifier } from '../../client/types/textDocument'
 import { TextDocumentDecoration } from '../../protocol/plainTypes'
 import {
@@ -10,7 +11,6 @@ import {
     ProvideTextDocumentDecorationSignature,
 } from './decoration'
 import { FIXTURE as COMMON_FIXTURE } from './registry.test'
-import { ThemableDecorationStyle } from 'sourcegraph'
 
 const FIXTURE = {
     ...COMMON_FIXTURE,
