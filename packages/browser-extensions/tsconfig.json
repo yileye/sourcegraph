@@ -8,6 +8,7 @@
     "moduleResolution": "node",
     "typeRoots": ["./node_modules/@types", "./src/types"],
     "lib": ["es2017", "dom", "dom.iterable", "es2017.object"],
+    "types": ["mocha"],
     "jsx": "react",
     "allowJs": true,
     "checkJs": true,
