@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { TextDocument } from 'sourcegraph'
 import { collectSubscribableValues, integrationTestContext } from './helpers.test'
 

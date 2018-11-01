@@ -1,5 +1,11 @@
-import * as assert from 'assert'
 import { integrationTestContext } from './helpers.test'
+
+import * as chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+
+chai.use(chaiAsPromised)
+
+const assert = chai.assert
 
 describe('Commands (integration)', () => {
     describe('commands.registerCommand', () => {
@@ -15,7 +21,7 @@ describe('Commands (integration)', () => {
             // Unregister the command and ensure it's removed.
             unsubscribe.unsubscribe()
             await extensionHost.internal.sync()
-            assert.rejects(() => extensionHost.commands.executeCommand('c')) // tslint:disable-line no-floating-promises
+            assert.isRejected(extensionHost.commands.executeCommand('c')) // tslint:disable-line no-floating-promises
             assert.throws(() => clientController.registries.commands.executeCommand({ command: 'c' }))
         })
 

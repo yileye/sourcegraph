@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { map } from 'rxjs/operators'
 import { ConfigurationUpdate } from '../client/controller'
 import { assertToJSON } from '../extension/types/common.test'

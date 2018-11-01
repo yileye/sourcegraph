@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { take } from 'rxjs/operators'
 import * as sourcegraph from 'sourcegraph'
 import { languages as sourcegraphLanguages } from 'sourcegraph'

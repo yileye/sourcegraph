@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { Subscription } from 'rxjs'
 import { TextDocumentPositionParams, TextDocumentRegistrationOptions } from '../../protocol'
 import { FeatureProviderRegistry as AbstractFeatureProviderRegistry } from './registry'

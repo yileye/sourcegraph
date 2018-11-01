@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { LinkedMap, Touch } from './linkedMap'
 
 describe('LinkedMap', () => {

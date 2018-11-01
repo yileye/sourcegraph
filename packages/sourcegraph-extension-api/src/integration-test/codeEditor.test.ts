@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { take } from 'rxjs/operators'
 import { Range } from '../extension/types/range'
 import * as plain from '../protocol/plainTypes'

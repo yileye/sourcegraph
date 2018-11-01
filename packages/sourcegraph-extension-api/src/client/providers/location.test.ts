@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { of } from 'rxjs'
 import { TestScheduler } from 'rxjs/testing'
 import { Location } from '../../protocol/plainTypes'

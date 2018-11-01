@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { Subscription } from 'rxjs'
 import { CommandEntry, CommandRegistry, executeCommand } from './command'
 

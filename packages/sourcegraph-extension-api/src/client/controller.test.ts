@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { Observable } from 'rxjs'
 import { first } from 'rxjs/operators'
 import { Controller, ExtensionConnection, ExtensionConnectionKey } from './controller'

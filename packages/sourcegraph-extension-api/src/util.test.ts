@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { compact, flatten, isEqual, tryCatchPromise } from './util'
 
 describe('flatten', () => {

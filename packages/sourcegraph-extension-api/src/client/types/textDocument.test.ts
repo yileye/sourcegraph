@@ -1,4 +1,4 @@
-import * as assert from 'assert'
+import { assert } from 'chai'
 import { DocumentSelector } from 'sourcegraph'
 import { match, score, TextDocumentItem } from './textDocument'
 
