@@ -667,9 +667,6 @@ function setImmediateCompat(f: () => void): NodeJS.Timer {
         return {
             ref: () => immediate.ref(),
             unref: () => immediate.ref(),
-            refresh: () => {
-                // noop
-            },
         }
     }
     return setTimeout(f, 0)
