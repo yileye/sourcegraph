@@ -9,7 +9,6 @@
     "typeRoots": ["./node_modules/@types", "./src/types"],
     "lib": ["es2017", "dom", "dom.iterable", "es2017.object"],
     "jsx": "react",
-    "resolveJsonModule": true,
     "allowJs": true,
     "checkJs": true,
     "sourceMap": true,
