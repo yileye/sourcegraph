@@ -10,6 +10,7 @@ import {
     ProvideTextDocumentDecorationSignature,
 } from './decoration'
 import { FIXTURE as COMMON_FIXTURE } from './registry.test'
+import { ThemableDecorationStyle } from 'sourcegraph'
 
 const FIXTURE = {
     ...COMMON_FIXTURE,
@@ -138,7 +139,7 @@ describe('decorationStyleForTheme', () => {
         assert.deepStrictEqual(decorationStyleForTheme({ range: FIXTURE_RANGE, backgroundColor: 'red' }, true), {
             range: FIXTURE_RANGE, // it's not necessary that range is included, but it saves an object allocation
             backgroundColor: 'red',
-        }))
+        } as ThemableDecorationStyle))
 
     it('applies light theme overrides', () =>
         assert.deepStrictEqual(
