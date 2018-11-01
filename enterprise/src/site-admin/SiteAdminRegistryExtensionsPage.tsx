@@ -7,7 +7,10 @@ import { Observable, Subject, Subscription } from 'rxjs'
 import { catchError, map, mapTo, startWith, switchMap, tap } from 'rxjs/operators'
 import { gql, queryGraphQL } from '../../../packages/webapp/src/backend/graphql'
 import * as GQL from '../../../packages/webapp/src/backend/graphqlschema'
-import { FilteredConnection, FilteredConnectionFilter } from '../../../packages/webapp/src/components/FilteredConnection'
+import {
+    FilteredConnection,
+    FilteredConnectionFilter,
+} from '../../../packages/webapp/src/components/FilteredConnection'
 import { PageTitle } from '../../../packages/webapp/src/components/PageTitle'
 import { Timestamp } from '../../../packages/webapp/src/components/time/Timestamp'
 import { registryExtensionFragment } from '../../../packages/webapp/src/extensions/extension/ExtensionArea'
