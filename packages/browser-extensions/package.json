@@ -115,7 +115,7 @@
   "dependencies": {
     "@slimsag/react-shortcuts": "^1.2.1",
     "@sourcegraph/codeintellify": "^3.9.1",
-    "@sourcegraph/extensions-client-common": "^11.0.0",
+    "@sourcegraph/extensions-client-common": "11.0.0",
     "@sourcegraph/react-loading-spinner": "0.0.6",
     "@sqs/jsonc-parser": "^1.0.3",
     "@types/uglifyjs-webpack-plugin": "1.1.0",
@@ -139,7 +139,7 @@
     "reactstrap": "^5.0.0-beta.2",
     "rxjs": "^6.3.2",
     "socket.io-client": "^2.1.1",
-    "sourcegraph": "^18.4.0",
+    "sourcegraph": "18.4.1",
     "string-score": "^1.0.1",
     "textarea-caret": "^3.1.0",
     "ts-key-enum": "^2.0.0",
